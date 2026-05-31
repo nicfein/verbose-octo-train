@@ -3,9 +3,6 @@ import threading
 import logging
 from typing import Optional
 
-import sys
-from pathlib import Path
-sys.path.insert(0, str(Path(__file__).parent.parent / "SpotAPI-main"))
 from spotapi.http.request import TLSClient
 
 import slave.config as cfg
