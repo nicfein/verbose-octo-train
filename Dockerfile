@@ -8,8 +8,6 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 
 RUN pip install --no-cache-dir -r requirements.txt spotapi[websocket,redis,pymongo]
 
-COPY config.py .
-COPY .env.example .env
 COPY slave/ ./slave/
 COPY run_slave.py .
 
