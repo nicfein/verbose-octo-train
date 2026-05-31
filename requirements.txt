@@ -15,4 +15,3 @@ validators==0.33.0
 websockets==12.0
 pyotp==2.9.0
 beautifulsoup4
-spotapi[websocket,redis,mongo]
