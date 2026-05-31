@@ -33,6 +33,25 @@ class Worker:
         self._fetcher = SlaveFetcher()
         self._running = False
         self._thread: threading.Thread | None = None
+        self._heartbeat_thread: threading.Thread | None = None
+
+    def _heartbeat(self):
+        try:
+            requests.post(
+                f"{cfg.MASTER_URL}/slave/heartbeat",
+                headers={
+                    "X-API-KEY": cfg.MASTER_API_KEY,
+                    "X-Slave-Name": self.slave_id,
+                },
+                timeout=10,
+            )
+        except Exception as e:
+            logger.warning(f"Heartbeat failed: {e}")
+
+    def _heartbeat_loop(self):
+        while self._running:
+            self._heartbeat()
+            time.sleep(cfg.HEARTBEAT_INTERVAL)
 
     def _post_result(self, entity_type: str, entity_id: str, data: dict | None, error: str | None = None):
         success = error is None and data is not None
@@ -47,7 +66,10 @@ class Worker:
             resp = requests.post(
                 f"{cfg.MASTER_URL}/internal/result",
                 json=payload,
-                headers={"X-API-KEY": cfg.MASTER_API_KEY},
+                headers={
+                    "X-API-KEY": cfg.MASTER_API_KEY,
+                    "X-Slave-Name": self.slave_id,
+                },
                 timeout=30,
             )
             if resp.ok:
@@ -61,7 +83,10 @@ class Worker:
         try:
             resp = requests.get(
                 f"{cfg.MASTER_URL}/slave/poll",
-                headers={"X-API-KEY": cfg.MASTER_API_KEY},
+                headers={
+                    "X-API-KEY": cfg.MASTER_API_KEY,
+                    "X-Slave-Name": self.slave_id,
+                },
                 timeout=30,
             )
             if resp.ok:
@@ -118,6 +143,9 @@ class Worker:
 
     def start(self) -> None:
         self._running = True
+        self._heartbeat()
+        self._heartbeat_thread = threading.Thread(target=self._heartbeat_loop, daemon=True, name=f"heartbeat-{self.slave_id}")
+        self._heartbeat_thread.start()
         self._thread = threading.Thread(target=self._poll_loop, daemon=True, name=f"worker-{self.slave_id}")
         self._thread.start()
         logger.info(f"Worker {self.slave_id} started")
@@ -126,5 +154,7 @@ class Worker:
         self._running = False
         if self._thread:
             self._thread.join(timeout=5)
+        if self._heartbeat_thread:
+            self._heartbeat_thread.join(timeout=5)
         get_pool().close_all()
         logger.info(f"Worker {self.slave_id} stopped")
