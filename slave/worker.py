@@ -1,4 +1,4 @@
-"""Redis pub/sub subscriber worker - runs on slaves."""
+"""Worker that polls master for tasks - no direct Redis access."""
 import json
 import logging
 import random
@@ -6,13 +6,11 @@ import time
 import threading
 from typing import Any
 
-import redis
 import requests
 
 import sys
 from pathlib import Path
 sys.path.insert(0, str(Path(__file__).parent.parent))
-import config
 import slave.config as cfg
 from slave.fetcher import SlaveFetcher
 from slave.client_pool import get_pool
@@ -23,20 +21,6 @@ logging.basicConfig(
 )
 logger = logging.getLogger(__name__)
 
-_redis_client: redis.Redis | None = None
-
-
-def get_redis() -> redis.Redis:
-    global _redis_client
-    if _redis_client is None:
-        _redis_client = redis.Redis(
-            host=cfg.REDIS_HOST,
-            port=cfg.REDIS_PORT,
-            db=cfg.REDIS_DB,
-            decode_responses=True,
-        )
-    return _redis_client
-
 
 def _bg_sleep():
     delay = random.uniform(cfg.BG_SLEEP_MIN, cfg.BG_SLEEP_MAX)
@@ -46,7 +30,6 @@ def _bg_sleep():
 class Worker:
     def __init__(self, slave_id: str | None = None):
         self.slave_id = slave_id or cfg.SLAVE_ID
-        self._redis = get_redis()
         self._fetcher = SlaveFetcher()
         self._running = False
         self._thread: threading.Thread | None = None
@@ -74,6 +57,20 @@ class Worker:
         except Exception as e:
             logger.error(f"Error reporting result to master: {e}")
 
+    def _poll_task(self) -> dict | None:
+        try:
+            resp = requests.get(
+                f"{cfg.MASTER_URL}/slave/poll",
+                headers={"X-API-KEY": cfg.MASTER_API_KEY},
+                timeout=30,
+            )
+            if resp.ok:
+                data = resp.json()
+                return data.get("task")
+        except Exception as e:
+            logger.error(f"Error polling master: {e}")
+        return None
+
     def _process_task(self, task: dict) -> None:
         entity_type = task.get("type", "album")
         entity_id = task.get("id", "")
@@ -82,12 +79,6 @@ class Worker:
         if not entity_id:
             logger.warning("Task missing id, skipping")
             return
-
-        dedup_key = f"processing:{entity_type}:{entity_id}"
-        if self._redis.exists(dedup_key):
-            logger.debug(f"Skipping duplicate task: {entity_type}/{entity_id}")
-            return
-        self._redis.setex(dedup_key, 300, "1")
 
         logger.info(f"Processing task: {entity_type}/{entity_id} (priority={priority})")
 
@@ -112,31 +103,22 @@ class Worker:
         except Exception as e:
             logger.error(f"Error fetching {entity_type}/{entity_id}: {e}")
             self._post_result(entity_type, entity_id, None, str(e))
-        finally:
-            self._redis.delete(dedup_key)
 
-    def _consume_queue(self) -> None:
+    def _poll_loop(self) -> None:
         while self._running:
             try:
-                result = self._redis.brpop(cfg.QUEUE_PRIORITY_KEY, timeout=5)
-                if result:
-                    _, task_json = result
-                    task = json.loads(task_json)
+                task = self._poll_task()
+                if task:
                     self._process_task(task)
-                    continue
-
-                result = self._redis.brpop(cfg.QUEUE_KEY, timeout=5)
-                if result:
-                    _, task_json = result
-                    task = json.loads(task_json)
-                    self._process_task(task)
+                else:
+                    time.sleep(1)
             except Exception as e:
-                logger.error(f"Queue consumer error: {e}")
-                time.sleep(1)
+                logger.error(f"Poll loop error: {e}")
+                time.sleep(5)
 
     def start(self) -> None:
         self._running = True
-        self._thread = threading.Thread(target=self._consume_queue, daemon=True, name=f"worker-{self.slave_id}")
+        self._thread = threading.Thread(target=self._poll_loop, daemon=True, name=f"worker-{self.slave_id}")
         self._thread.start()
         logger.info(f"Worker {self.slave_id} started")
 
