@@ -2,9 +2,6 @@
 import logging
 from typing import Any, Tuple
 
-import sys
-from pathlib import Path
-sys.path.insert(0, str(Path(__file__).parent.parent / "SpotAPI-main"))
 from spotapi import PublicAlbum, Artist, Song
 
 from slave.client_pool import get_pool
