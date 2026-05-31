@@ -3,6 +3,9 @@ import threading
 import logging
 from typing import Optional
 
+import sys
+from pathlib import Path
+sys.path.insert(0, str(Path(__file__).parent.parent / "SpotAPI"))
 from spotapi.http.request import TLSClient
 
 import slave.config as cfg
@@ -39,6 +42,12 @@ class ClientPool:
                 self._clients.append(client)
             else:
                 client.close()
+
+    def discard(self, client: TLSClient) -> None:
+        with self._lock:
+            if client in self._clients:
+                self._clients.remove(client)
+            client.close()
 
     def close_all(self) -> None:
         with self._lock:
