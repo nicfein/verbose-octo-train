@@ -1,6 +1,5 @@
 """Slave config pointing to master."""
 import os
-
 from dotenv import load_dotenv
 from pathlib import Path
 
@@ -18,3 +17,5 @@ AUTO_RETRIES: int = int(os.getenv("AUTO_RETRIES", "3"))
 
 BG_SLEEP_MIN: int = int(os.getenv("BG_SLEEP_MIN", "1"))
 BG_SLEEP_MAX: int = int(os.getenv("BG_SLEEP_MAX", "5"))
+
+HEARTBEAT_INTERVAL: int = int(os.getenv("SLAVE_HEARTBEAT_INTERVAL", "30"))
