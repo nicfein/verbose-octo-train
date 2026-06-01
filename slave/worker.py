@@ -164,7 +164,7 @@ class Worker:
 
     def stop(self) -> None:
         self._running = False
-        if self._thread:
+        if self._thread:ffd
             self._thread.join(timeout=5)
         get_pool().close_all()
         logger.info(f"Worker {self.slave_id} stopped")

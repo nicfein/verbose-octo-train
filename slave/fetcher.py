@@ -19,7 +19,7 @@ class SlaveFetcher:
             client = pool.get()
             try:
                 album = PublicAlbum(album_id, client=client)
-                data = album.get_album_info(limit=25)
+                data = album.get_album_info(limit=343)
                 if not isinstance(data, dict):
                     logger.warning(f"fetch_album returned non-dict for {album_id}: {type(data)}, attempt {attempt + 1}")
                     pool.discard(client)
@@ -89,3 +89,5 @@ class SlaveFetcher:
                     continue
                 return {}
         return {}
+
+    
