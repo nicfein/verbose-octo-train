@@ -133,7 +133,10 @@ class Worker:
         cycle = 0
         while self._running:
             try:
+                t0 = time.time()
                 task = self._poll_task()
+                elapsed = time.time() - t0
+                logger.info(f"[DEBUG] poll took {elapsed:.2f}s, got task={task is not None}")
                 if task:
                     self._process_task(task)
                     cycle = 0
