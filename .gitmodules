@@ -1,0 +1,3 @@
+[submodule "SpotAPI"]
+	path = SpotAPI
+	url = https://github.com/Aran404/SpotAPI
