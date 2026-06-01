@@ -1,4 +1,15 @@
 """Worker that polls master for tasks - no direct Redis access."""
+import socket
+_original_getaddrinfo = socket.getaddrinfo
+
+def _fast_getaddrinfo(host, port, family=0, type=0, proto=0, flags=0):
+    try:
+        return _original_getaddrinfo(host, port, socket.AF_INET, type, proto, flags)
+    except Exception:
+        return _original_getaddrinfo(host, port, family, type, proto, flags)
+
+socket.getaddrinfo = _fast_getaddrinfo
+
 import json
 import logging
 import random
