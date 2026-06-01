@@ -89,14 +89,11 @@ class Worker:
                 },
                 timeout=30,
             )
-            logger.info(f"[DEBUG] poll response: status={resp.status_code}, body={resp.text[:200]}")
             if resp.ok:
                 data = resp.json()
                 return data.get("task")
-            else:
-                logger.warning(f"[DEBUG] poll non-200: {resp.status_code} - {resp.text[:200]}")
         except Exception as e:
-            logger.error(f"[DEBUG] poll exception: {e}")
+            logger.error(f"Error polling master: {e}")
         return None
 
     def _process_task(self, task: dict) -> None:
@@ -133,13 +130,19 @@ class Worker:
             self._post_result(entity_type, entity_id, None, str(e))
 
     def _poll_loop(self) -> None:
+        cycle = 0
         while self._running:
             try:
                 task = self._poll_task()
                 if task:
                     self._process_task(task)
+                    cycle = 0
                 else:
                     time.sleep(1)
+                    cycle += 1
+                if cycle >= 10:
+                    self._heartbeat()
+                    cycle = 0
             except Exception as e:
                 logger.error(f"Poll loop error: {e}")
                 time.sleep(5)
