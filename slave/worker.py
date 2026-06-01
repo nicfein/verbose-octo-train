@@ -124,10 +124,11 @@ class Worker:
                 data = self._fetcher.fetch_artist(entity_id)
                 self._post_result("artist", entity_id, data)
                 logger.info(f"Fetched artist {entity_id}")
-            elif entity_type == "song":
+            elif entity_type == "song" or entity_type == "track":
                 data = self._fetcher.fetch_song(entity_id)
-                self._post_result("song", entity_id, data)
-                logger.info(f"Fetched song {entity_id}")
+                self._post_result("track", entity_id, data)
+                logger.info(f"Fetched track {entity_id}")
+            
             else:
                 logger.warning(f"Unknown entity type: {entity_type}")
         except Exception as e:
@@ -164,7 +165,7 @@ class Worker:
 
     def stop(self) -> None:
         self._running = False
-        if self._thread:ffd
+        if self._thread:
             self._thread.join(timeout=5)
         get_pool().close_all()
         logger.info(f"Worker {self.slave_id} stopped")
