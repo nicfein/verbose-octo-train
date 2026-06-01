@@ -11,8 +11,6 @@ RUN pip install --no-cache-dir -r requirements.txt
 
 COPY SpotAPI/ ./SpotAPI/
 
-COPY config.py .
-COPY .env.example .env
 COPY slave/ ./slave/
 COPY run_slave.py .
 
