@@ -80,24 +80,24 @@ class Worker:
             logger.error(f"Error reporting result to master: {e}")
 
     def _poll_task(self) -> dict | None:
-    try:
-        resp = requests.get(
-            f"{cfg.MASTER_URL}/slave/poll",
-            headers={
-                "X-API-KEY": cfg.MASTER_API_KEY,
-                "X-Slave-Name": self.slave_id,
-            },
-            timeout=30,
-        )
-        logger.info(f"[DEBUG] poll response: status={resp.status_code}, body={resp.text[:200]}")
-        if resp.ok:
-            data = resp.json()
-            return data.get("task")
-        else:
-            logger.warning(f"[DEBUG] poll non-200: {resp.status_code} - {resp.text[:200]}")
-    except Exception as e:
-        logger.error(f"[DEBUG] poll exception: {e}")
-    return None
+        try:
+            resp = requests.get(
+                f"{cfg.MASTER_URL}/slave/poll",
+                headers={
+                    "X-API-KEY": cfg.MASTER_API_KEY,
+                    "X-Slave-Name": self.slave_id,
+                },
+                timeout=30,
+            )
+            logger.info(f"[DEBUG] poll response: status={resp.status_code}, body={resp.text[:200]}")
+            if resp.ok:
+                data = resp.json()
+                return data.get("task")
+            else:
+                logger.warning(f"[DEBUG] poll non-200: {resp.status_code} - {resp.text[:200]}")
+        except Exception as e:
+            logger.error(f"[DEBUG] poll exception: {e}")
+        return None
 
     def _process_task(self, task: dict) -> None:
         entity_type = task.get("type", "album")
