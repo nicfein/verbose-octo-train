@@ -23,7 +23,6 @@ if __name__ == "__main__":
 
     print(f"Starting slave worker: {cfg.SLAVE_ID}")
     print(f"Connecting to master at: {cfg.MASTER_URL}")
-    print(f"Connecting to Redis at: {cfg.REDIS_HOST}:{cfg.REDIS_PORT}")
     print(f"Max TLS clients: {cfg.MAX_CLIENTS}")
 
     worker_instance.start()
